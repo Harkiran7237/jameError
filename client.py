@@ -1,57 +1,79 @@
 import socket
 from threading import Thread
+from tkinter import *
 
-server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+# nickname = input("Choose your nickname: ")
+
+client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 ip_address = '127.0.0.1'
 port = 8000
 
-server.bind((ip_address, port))
-server.listen()
+client.connect((ip_address, port))
 
-list_of_clients = []
-nicknames = []
+print("Connected with the server...")
 
-print("Server has started...")
+class GUI:
+    def __init__(self):
+        self.Window = Tk()
+        self.Window.withdraw()
 
-def clientthread(conn, nickname):
-    conn.send("Welcome to this chatroom!".encode('utf-8'))
-    while True:
-        try:
-            message = conn.recv(2048).decode('utf-8')
-            if message:
-                print(message)
-                broadcast(message, conn)
-            else:
-                remove(conn)
-                remove_nickname(nickname)
-        except:
-            continue
+        self.login = Toplevel()
+        self.login.title("Login")
 
-def broadcast(message, connection):
-    for clients in list_of_clients:
-        if clients!=connection:
+        self.login.resizable(width=False, height=False)
+        self.login.configure(width=400, height=300)
+        
+        self.pls = Label(self.login,text = "Please login to continue",justify = CENTER,font = "Helvetica 14 bold")
+        self.pls.place( relheight = 0.15,relx = 0.2,rely = 0.07)
+
+        self.labelName = Label(self.login,text = "Name: ",font = ("Helvetica 12"))
+		#self.labelName.place(relheight=0.2,)
+        self.labelName.place(relheight = 0.2,relx = 0.1,rely = 0.2)
+
+        self.entryName = Entry(self.login,font = "Helvetica 14")
+        self.entryName.place(relwidth = 0.4,relheight = 0.12,relx = 0.35,rely = 0.2)
+        self.entryName.focus()
+		
+        self.go = Button(self.login,
+						text = "CONTINUE",
+						font = "Helvetica 14 bold",
+						command = lambda: self.goAhead(self.entryName.get()))
+        self.go.place(  relx = 0.4,
+					    rely = 0.55)
+        
+        self.Window.mainloop()
+
+    def goAhead(self, name):
+        self.login.destroy()
+        self.name = name
+        rcv = Thread(target=self.receive)
+        rcv.start()
+
+    def receive():
+        while True:
             try:
-                clients.send(message.encode('utf-8'))
+                message = client.recv(2048).decode('utf-8')
+                if message == 'NICKNAME':
+                    client.send(self.name.encode('utf-8'))
+                else:
+                    print(message)
             except:
-                remove(clients)
+                print("An error occured!")
+                client.close()
+                break
 
-def remove(connection):
-    if connection in list_of_clients:
-        list_of_clients.remove(connection)
+g = GUI()
 
-def remove_nickname(nickname):
-    if nickname in nicknames:
-        nicknames.remove(nickname)
 
-while True:
-    conn, addr = server.accept()
-    conn.send('NICKNAME'.encode('utf-8'))
-    nickname = conn.recv(2048).decode('utf-8')
-    list_of_clients.append(conn)
-    nicknames.append(nickname)
-    message = "{} joined!".format(nickname)
-    print(message)
-    broadcast(message, conn)
-    new_thread = Thread(target= clientthread,args=(conn, nickname))
-    new_thread.start()
+
+
+# def write():
+#     while True:
+#         message = '{}: {}'.format(nickname, input(''))
+#         client.send(message.encode('utf-8'))
+
+# receive_thread = Thread(target=receive)
+# receive_thread.start()
+# write_thread = Thread(target=write)
+# write_thread.start()
